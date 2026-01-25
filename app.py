@@ -182,10 +182,37 @@ if st.session_state.page == "🏠 Home":
     if not today_games.empty:
         for _, game in today_games.iterrows():
             game_display = format_game_display(game)
-            st.markdown(f"<div class='game-card'><h4 style='color: {NBA_BLUE}; margin: 0;'>{game_display}</h4></div>", 
+            st.markdown(f"<div style='background-color: {NBA_WHITE}; border: 1px solid {NBA_BLUE}; border-radius: 5px; padding: 8px; margin: 5px 0; text-align: center;'><p style='color: {NBA_BLUE}; margin: 0; font-size: 14px;'>{game_display}</p></div>", 
                        unsafe_allow_html=True)
     else:
         st.info("No games scheduled for today")
+    
+    st.markdown("---")
+    st.markdown("### 📊 Season Leaders")
+    
+    try:
+        df_season = pd.read_parquet('player_season.parquet')
+        
+        stats = {
+            'PTS': '🏀 Points Leaders',
+            'REB': '🔄 Rebounds Leaders',
+            'AST': '🎯 Assists Leaders',
+            'STL': '🖐️ Steals Leaders',
+            'BLK': '🚫 Blocks Leaders'
+        }
+        
+        for stat_col, stat_title in stats.items():
+            st.markdown(f"**{stat_title}**")
+            if stat_col in df_season.columns:
+                top_5 = df_season.nlargest(5, stat_col)[['PLAYER', stat_col]]
+                top_5 = top_5.reset_index(drop=True)
+                top_5.index = top_5.index + 1
+                st.dataframe(top_5, use_container_width=True, height=220)
+            else:
+                st.warning(f"{stat_col} column not found")
+            st.markdown("")
+    except Exception as e:
+        st.error(f"❌ Error loading season stats: {str(e)}")
     
     st.markdown("---")
     st.markdown("### Navigation")
@@ -339,6 +366,8 @@ elif st.session_state.page == "🏥 Injuries":
         
         filter_cols = [col for col in df.columns if 'PLAYER' in col.upper() or 'TEAM' in col.upper()]
         
+        filtered_df = df.copy()
+        
         if filter_cols:
             cols = st.columns(len(filter_cols))
             filters = {}
@@ -347,12 +376,9 @@ elif st.session_state.page == "🏥 Injuries":
                     unique_values = ['All'] + sorted(df[col].dropna().unique().tolist())
                     filters[col] = st.selectbox(f"{col}", unique_values, key=f"injury_{col}")
             
-            filtered_df = df.copy()
             for col, filter_val in filters.items():
                 if filter_val and filter_val != 'All':
                     filtered_df = filtered_df[filtered_df[col] == filter_val]
-        else:
-            filtered_df = df
         
         st.dataframe(filtered_df, use_container_width=True, height=600, hide_index=True)
         
