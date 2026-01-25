@@ -132,21 +132,15 @@ def get_today_games():
     try:
         df_schedule = pd.read_parquet('season_schedule.parquet')
         df_schedule['Date'] = pd.to_datetime(df_schedule['Date'], format='mixed', dayfirst=True)
-        
-        df_schedule['Heure_utc'] = pd.to_datetime(df_schedule['Heure'])
+        df_schedule['Heure_utc'] = pd.to_datetime(df_schedule['Heure'], utc=True)
         
         paris_tz = pytz.timezone('Europe/Paris')
-        
-        if df_schedule['Heure_utc'].dt.tz is None:
-            df_schedule['Heure_paris'] = df_schedule['Heure_utc'].dt.tz_localize('UTC').dt.tz_convert(paris_tz)
-        else:
-            df_schedule['Heure_paris'] = df_schedule['Heure_utc'].dt.tz_convert(paris_tz)
+        df_schedule['Heure_paris'] = df_schedule['Heure_utc'].dt.tz_convert(paris_tz)
         
         now_paris = datetime.now(paris_tz)
         today_paris = now_paris.date()
         
         today_games = df_schedule[df_schedule['Date'].dt.date == today_paris].copy()
-        
         today_games = today_games.sort_values('Heure_paris')
         
         return today_games
