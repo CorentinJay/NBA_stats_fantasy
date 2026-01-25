@@ -132,12 +132,25 @@ def get_today_games():
     try:
         df_schedule = pd.read_parquet('season_schedule.parquet')
         df_schedule['Date'] = pd.to_datetime(df_schedule['Date'], format='mixed', dayfirst=True)
-        df_schedule['Heure_utc'] = pd.to_datetime(df_schedule['Heure'], utc=True)
         
-        paris_tz = pytz.timezone('Europe/Paris')
-        df_schedule['Heure_paris'] = df_schedule['Heure_utc'].dt.tz_convert(paris_tz)
+        def parse_et_time(statut, date):
+            try:
+                time_str = statut.replace(' ET', '').strip()
+                dt_str = f"{date.strftime('%Y-%m-%d')} {time_str}"
+                dt_et = pd.to_datetime(dt_str, format='%Y-%m-%d %I:%M %p')
+                eastern_tz = pytz.timezone('US/Eastern')
+                paris_tz = pytz.timezone('Europe/Paris')
+                dt_et_aware = eastern_tz.localize(dt_et)
+                dt_paris = dt_et_aware.astimezone(paris_tz)
+                return dt_paris
+            except:
+                return None
         
-        now_paris = datetime.now(paris_tz)
+        df_schedule['Heure_paris'] = df_schedule.apply(
+            lambda row: parse_et_time(row['Statut'], row['Date']), axis=1
+        )
+        
+        now_paris = datetime.now(pytz.timezone('Europe/Paris'))
         today_paris = now_paris.date()
         
         today_games = df_schedule[df_schedule['Date'].dt.date == today_paris].copy()
