@@ -144,7 +144,10 @@ def get_today_games():
             (df_schedule['Date'].dt.date == tomorrow_paris)
         ].copy()
         
-        today_games['Heure_paris'] = today_games['Heure_dt'].dt.tz_localize('UTC').dt.tz_convert(paris_tz)
+        if today_games['Heure_dt'].dt.tz is None:
+            today_games['Heure_paris'] = today_games['Heure_dt'].dt.tz_localize('UTC').dt.tz_convert(paris_tz)
+        else:
+            today_games['Heure_paris'] = today_games['Heure_dt'].dt.tz_convert(paris_tz)
         
         today_games = today_games[today_games['Heure_paris'].dt.date == today_paris]
         
