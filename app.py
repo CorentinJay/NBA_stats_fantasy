@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import pytz
+import plotly.graph_objects as go
+import numpy as np
 
 st.set_page_config(
     page_title="NBA Stats Fantasy",
@@ -98,9 +100,9 @@ with st.sidebar:
     
     page = st.radio(
         "Navigation",
-        ["🏠 Home", "👤 Players", "🏥 Injuries", "🔮 Fantasy Predictions"],
+        ["🏠 Home", "👤 Players", "⚔️ Player VS", "🏥 Injuries", "🔮 Fantasy Predictions"],
         label_visibility="collapsed",
-        index=["🏠 Home", "👤 Players", "🏥 Injuries", "🔮 Fantasy Predictions"].index(st.session_state.page)
+        index=["🏠 Home", "👤 Players", "⚔️ Player VS", "🏥 Injuries", "🔮 Fantasy Predictions"].index(st.session_state.page)
     )
     
     if page != st.session_state.page:
@@ -168,6 +170,59 @@ def get_first_game_time():
         return first_time.strftime('%H:%M')
     return None
 
+def create_radar_chart(player1_data, player2_data, categories, title, player1_name, player2_name):
+    """Create a radar chart comparing two players"""
+    
+    fig = go.Figure()
+    
+    # Player 1
+    fig.add_trace(go.Scatterpolar(
+        r=player1_data,
+        theta=categories,
+        fill='toself',
+        name=player1_name,
+        line=dict(color=NBA_BLUE, width=2),
+        fillcolor=f'rgba(29, 66, 138, 0.3)'
+    ))
+    
+    # Player 2
+    fig.add_trace(go.Scatterpolar(
+        r=player2_data,
+        theta=categories,
+        fill='toself',
+        name=player2_name,
+        line=dict(color=NBA_RED, width=2),
+        fillcolor=f'rgba(200, 16, 46, 0.3)'
+    ))
+    
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, max(max(player1_data), max(player2_data)) * 1.1]
+            )
+        ),
+        showlegend=True,
+        title=dict(
+            text=title,
+            font=dict(size=18, color=NBA_BLUE, family="Arial Black")
+        ),
+        height=500,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.2,
+            xanchor="center",
+            x=0.5
+        )
+    )
+    
+    return fig
+
+def normalize_percentage(value, max_val=100):
+    """Normalize percentage values for radar chart"""
+    return min(value, max_val)
+
 if st.session_state.page == "🏠 Home":
     st.title("🏀 NBA Stats Fantasy")
     
@@ -218,7 +273,7 @@ if st.session_state.page == "🏠 Home":
     st.markdown("---")
     st.markdown("### Navigation")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         if st.button("👤 Players\n\nPlayer statistics and info", use_container_width=True):
@@ -226,11 +281,16 @@ if st.session_state.page == "🏠 Home":
             st.rerun()
     
     with col2:
+        if st.button("⚔️ Player VS\n\nCompare two players", use_container_width=True):
+            st.session_state.page = "⚔️ Player VS"
+            st.rerun()
+    
+    with col3:
         if st.button("🏥 Injuries\n\nInjury reports", use_container_width=True):
             st.session_state.page = "🏥 Injuries"
             st.rerun()
     
-    with col3:
+    with col4:
         if st.button("🔮 Predictions\n\nFantasy predictions", use_container_width=True):
             st.session_state.page = "🔮 Fantasy Predictions"
             st.rerun()
@@ -358,6 +418,131 @@ elif st.session_state.page == "👤 Players":
             
         except Exception as e:
             st.error(f"❌ Error loading player info: {str(e)}")
+
+elif st.session_state.page == "⚔️ Player VS":
+    st.title("⚔️ Player Comparison")
+    
+    try:
+        df_season = pd.read_parquet('player_season.parquet')
+        
+        # Get player list
+        player_col = None
+        for col in df_season.columns:
+            if 'PLAYER' in col.upper() and 'ID' not in col.upper():
+                player_col = col
+                break
+        
+        if player_col is None:
+            st.error("❌ Unable to find player names column")
+        else:
+            players_list = sorted(df_season[player_col].dropna().unique().tolist())
+            
+            # Player selection
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown(f"<h3 style='color: {NBA_BLUE}; text-align: center;'>Player 1</h3>", unsafe_allow_html=True)
+                player1 = st.selectbox("Select Player 1", players_list, key="player1", label_visibility="collapsed")
+            
+            with col2:
+                st.markdown(f"<h3 style='color: {NBA_RED}; text-align: center;'>Player 2</h3>", unsafe_allow_html=True)
+                player2 = st.selectbox("Select Player 2", players_list, key="player2", label_visibility="collapsed")
+            
+            if player1 and player2:
+                # Get player data
+                player1_stats = df_season[df_season[player_col] == player1].iloc[0]
+                player2_stats = df_season[df_season[player_col] == player2].iloc[0]
+                
+                st.markdown("---")
+                
+                # Classic stats radar chart
+                classic_stats = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'MIN']
+                classic_values1 = []
+                classic_values2 = []
+                valid_classic_stats = []
+                
+                for stat in classic_stats:
+                    if stat in df_season.columns:
+                        val1 = player1_stats[stat] if pd.notna(player1_stats[stat]) else 0
+                        val2 = player2_stats[stat] if pd.notna(player2_stats[stat]) else 0
+                        classic_values1.append(float(val1))
+                        classic_values2.append(float(val2))
+                        valid_classic_stats.append(stat)
+                
+                # Shooting efficiency radar chart
+                shooting_stats = ['FG%', 'FG3%', 'FT%']
+                shooting_values1 = []
+                shooting_values2 = []
+                valid_shooting_stats = []
+                
+                for stat in shooting_stats:
+                    if stat in df_season.columns:
+                        val1 = player1_stats[stat] if pd.notna(player1_stats[stat]) else 0
+                        val2 = player2_stats[stat] if pd.notna(player2_stats[stat]) else 0
+                        # Convert percentages (if needed)
+                        if val1 > 0 and val1 < 1:
+                            val1 *= 100
+                        if val2 > 0 and val2 < 1:
+                            val2 *= 100
+                        shooting_values1.append(float(val1))
+                        shooting_values2.append(float(val2))
+                        valid_shooting_stats.append(stat)
+                
+                # Display charts side by side
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if valid_classic_stats:
+                        fig1 = create_radar_chart(
+                            classic_values1,
+                            classic_values2,
+                            valid_classic_stats,
+                            "📊 Classic Stats Comparison",
+                            player1,
+                            player2
+                        )
+                        st.plotly_chart(fig1, use_container_width=True)
+                    else:
+                        st.warning("Classic stats not available")
+                
+                with col2:
+                    if valid_shooting_stats:
+                        fig2 = create_radar_chart(
+                            shooting_values1,
+                            shooting_values2,
+                            valid_shooting_stats,
+                            "🎯 Shooting Efficiency Comparison",
+                            player1,
+                            player2
+                        )
+                        st.plotly_chart(fig2, use_container_width=True)
+                    else:
+                        st.warning("Shooting stats not available")
+                
+                # Detailed comparison table
+                st.markdown("---")
+                st.subheader("📋 Detailed Comparison")
+                
+                comparison_stats = valid_classic_stats + valid_shooting_stats
+                comparison_data = {
+                    'Stat': comparison_stats,
+                    player1: [classic_values1 + shooting_values1][0][:len(comparison_stats)],
+                    player2: [classic_values2 + shooting_values2][0][:len(comparison_stats)]
+                }
+                
+                df_comparison = pd.DataFrame(comparison_data)
+                
+                # Add difference column
+                df_comparison['Difference'] = df_comparison[player2] - df_comparison[player1]
+                df_comparison['Winner'] = df_comparison.apply(
+                    lambda row: player1 if row[player1] > row[player2] else (player2 if row[player2] > row[player1] else 'Equal'),
+                    axis=1
+                )
+                
+                st.dataframe(df_comparison, use_container_width=True, hide_index=True)
+                
+    except Exception as e:
+        st.error(f"❌ Error loading player data: {str(e)}")
 
 elif st.session_state.page == "🏥 Injuries":
     st.title("🏥 Injury List")
