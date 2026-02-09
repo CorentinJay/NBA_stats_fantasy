@@ -567,11 +567,10 @@ elif st.session_state.page == "⚔️ Player VS":
                         shooting_values2.append(0)
                         valid_shooting_stats.append(f"{display_name} (N/A)")
                 
-                # Display charts in a grid layout
+                # Display all three charts in one row
                 st.markdown("---")
                 
-                # Row 1: Volume Stats and Defensive Stats
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 
                 with col1:
                     if valid_volume_stats:
@@ -579,7 +578,7 @@ elif st.session_state.page == "⚔️ Player VS":
                             volume_values1,
                             volume_values2,
                             valid_volume_stats,
-                            "📊 Volume Stats (PTS, REB, AST, MIN)",
+                            "📊 Volume Stats",
                             player1,
                             player2,
                             is_percentage=False
@@ -594,7 +593,7 @@ elif st.session_state.page == "⚔️ Player VS":
                             defensive_values1,
                             defensive_values2,
                             valid_defensive_stats,
-                            "🛡️ Defensive Stats (STL, BLK)",
+                            "🛡️ Defensive Stats",
                             player1,
                             player2,
                             is_percentage=False
@@ -603,11 +602,7 @@ elif st.session_state.page == "⚔️ Player VS":
                     else:
                         st.warning("Defensive stats not available")
                 
-                # Row 2: Shooting Efficiency (centered)
-                st.markdown("---")
-                col_left, col_center, col_right = st.columns([1, 2, 1])
-                
-                with col_center:
+                with col3:
                     if valid_shooting_stats:
                         # Remove "(N/A)" entries if all are N/A
                         if not all("(N/A)" in stat for stat in valid_shooting_stats):
@@ -615,7 +610,7 @@ elif st.session_state.page == "⚔️ Player VS":
                                 shooting_values1,
                                 shooting_values2,
                                 valid_shooting_stats,
-                                "🎯 Shooting Efficiency (FG%, FG3%, FT%)",
+                                "🎯 Shooting Efficiency",
                                 player1,
                                 player2,
                                 is_percentage=True
