@@ -171,23 +171,44 @@ def get_first_game_time():
     return None
 
 def create_radar_chart(player1_data, player2_data, categories, title, player1_name, player2_name, is_percentage=False):
-    """Create a radar chart comparing two players"""
+    """Create a radar chart comparing two players with normalized scales"""
     
     fig = go.Figure()
     
-    # Determine appropriate range
+    # Determine appropriate range based on stat type
     if is_percentage:
+        # Fixed scale for percentages
         max_range = 100
+        tick_vals = [0, 20, 40, 60, 80, 100]
     else:
-        # For classic stats, use a more dynamic range
-        max_val = max(max(player1_data), max(player2_data))
-        # Round up to nearest 5 or 10 for cleaner display
-        if max_val <= 10:
-            max_range = max_val * 1.2
-        elif max_val <= 50:
-            max_range = ((max_val // 5) + 2) * 5
+        # Dynamic scale for classic stats
+        # Find the maximum value across all stats for both players
+        all_values = player1_data + player2_data
+        max_val = max(all_values) if all_values else 1
+        
+        # Calculate appropriate max range
+        if max_val <= 2:
+            max_range = 2.5
+            tick_vals = [0, 0.5, 1, 1.5, 2, 2.5]
+        elif max_val <= 5:
+            max_range = 6
+            tick_vals = [0, 1, 2, 3, 4, 5, 6]
+        elif max_val <= 10:
+            max_range = 12
+            tick_vals = [0, 2, 4, 6, 8, 10, 12]
+        elif max_val <= 20:
+            max_range = 25
+            tick_vals = [0, 5, 10, 15, 20, 25]
+        elif max_val <= 30:
+            max_range = 35
+            tick_vals = [0, 7, 14, 21, 28, 35]
+        elif max_val <= 40:
+            max_range = 45
+            tick_vals = [0, 9, 18, 27, 36, 45]
         else:
-            max_range = ((max_val // 10) + 2) * 10
+            # For very high values (like MIN), round up to nearest 10
+            max_range = int((max_val / 10 + 1.5)) * 10
+            tick_vals = [i * max_range / 5 for i in range(6)]
     
     # Player 1
     fig.add_trace(go.Scatterpolar(
@@ -195,8 +216,9 @@ def create_radar_chart(player1_data, player2_data, categories, title, player1_na
         theta=categories,
         fill='toself',
         name=player1_name,
-        line=dict(color=NBA_BLUE, width=2),
-        fillcolor=f'rgba(29, 66, 138, 0.3)'
+        line=dict(color=NBA_BLUE, width=3),
+        fillcolor=f'rgba(29, 66, 138, 0.25)',
+        hovertemplate='%{theta}: %{r:.1f}<extra></extra>'
     ))
     
     # Player 2
@@ -205,8 +227,9 @@ def create_radar_chart(player1_data, player2_data, categories, title, player1_na
         theta=categories,
         fill='toself',
         name=player2_name,
-        line=dict(color=NBA_RED, width=2),
-        fillcolor=f'rgba(200, 16, 46, 0.3)'
+        line=dict(color=NBA_RED, width=3),
+        fillcolor=f'rgba(200, 16, 46, 0.25)',
+        hovertemplate='%{theta}: %{r:.1f}<extra></extra>'
     ))
     
     fig.update_layout(
@@ -215,28 +238,35 @@ def create_radar_chart(player1_data, player2_data, categories, title, player1_na
                 visible=True,
                 range=[0, max_range],
                 showticklabels=True,
-                tickfont=dict(size=10)
+                tickfont=dict(size=11, color='#888'),
+                tickvals=tick_vals,
+                gridcolor='rgba(255, 255, 255, 0.2)'
             ),
             angularaxis=dict(
-                tickfont=dict(size=12, color='white')
-            )
+                tickfont=dict(size=13, color='white', family='Arial Black'),
+                gridcolor='rgba(255, 255, 255, 0.2)'
+            ),
+            bgcolor='rgba(0, 0, 0, 0)'
         ),
         showlegend=True,
         title=dict(
             text=title,
-            font=dict(size=18, color=NBA_BLUE, family="Arial Black")
+            font=dict(size=18, color=NBA_BLUE, family="Arial Black"),
+            x=0.5,
+            xanchor='center'
         ),
         height=500,
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=-0.2,
+            y=-0.15,
             xanchor="center",
             x=0.5,
-            font=dict(size=12)
+            font=dict(size=13, family='Arial')
         ),
         paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)'
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(t=80, b=80, l=60, r=60)
     )
     
     return fig
