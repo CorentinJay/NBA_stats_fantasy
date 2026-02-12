@@ -132,16 +132,16 @@ def format_game_display(row):
 
 def get_today_games():
     try:
-        df_schedule = pd.read_parquet('season_schedule.parquet')
-        df_schedule['Date'] = pd.to_datetime(df_schedule['Date'], format='mixed', dayfirst=True)
+        df_schedule = __pd__.read_parquet('season_schedule.parquet')
+        df_schedule['Date'] = __pd__.to_datetime(df_schedule['Date'], format='mixed', dayfirst=True)
         
         def parse_et_time(statut, date):
             try:
                 time_str = statut.replace(' ET', '').strip()
                 dt_str = f"{date.strftime('%Y-%m-%d')} {time_str}"
-                dt_et = pd.to_datetime(dt_str, format='%Y-%m-%d %I:%M %p')
-                eastern_tz = pytz.timezone('US/Eastern')
-                paris_tz = pytz.timezone('Europe/Paris')
+                dt_et = __pd__.to_datetime(dt_str, format='%Y-%m-%d %I:%M %p')
+                eastern_tz = __pytz__.timezone('US/Eastern')
+                paris_tz = __pytz__.timezone('Europe/Paris')
                 dt_et_aware = eastern_tz.localize(dt_et)
                 dt_paris = dt_et_aware.astimezone(paris_tz)
                 return dt_paris
@@ -152,16 +152,22 @@ def get_today_games():
             lambda row: parse_et_time(row['Statut'], row['Date']), axis=1
         )
         
-        now_paris = datetime.now(pytz.timezone('Europe/Paris'))
+        now_paris = __datetime__.now(__pytz__.timezone('Europe/Paris'))
         today_paris = now_paris.date()
         
         today_games = df_schedule[df_schedule['Date'].dt.date == today_paris].copy()
+        
+        # Vérifier s'il y a des matchs aujourd'hui
+        if today_games.empty:
+            __st__.info("🏀 No games for today...")
+            return __pd__.__DataFrame__()
+        
         today_games = today_games.sort_values('Heure_paris')
         
         return today_games
-    except Exception as e:
-        st.error(f"❌ Error loading schedule: {str(e)}")
-        return pd.DataFrame()
+    except __Exception__ as e:
+        __st__.error(f"❌ Error loading schedule: {__str__(e)}")
+        return __pd__.__DataFrame__()
 
 def get_first_game_time():
     today_games = get_today_games()
