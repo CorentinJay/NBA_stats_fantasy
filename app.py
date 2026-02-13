@@ -157,7 +157,6 @@ def get_today_games():
         
         today_games = df_schedule[df_schedule['Date'].dt.date == today_paris].copy()
         
-        # Vérifier s'il y a des matchs aujourd'hui
         if today_games.empty:
             st.info("🏀 No games for today...")
             return pd.DataFrame()
@@ -165,8 +164,8 @@ def get_today_games():
         today_games = today_games.sort_values('Heure_paris')
         
         return today_games
-    except Exception as e:
-        st.error(f"❌ Error loading schedule: {str(e)}")
+    except Exception as e:  # ← CORRECTION ICI
+        st.error(f"❌ Error loading schedule: {str(e)}")  # ← ET ICI
         return pd.DataFrame()
 
 def get_first_game_time():
